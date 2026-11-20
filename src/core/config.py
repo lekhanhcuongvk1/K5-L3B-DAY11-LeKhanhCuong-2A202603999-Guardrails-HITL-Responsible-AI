@@ -4,9 +4,12 @@ Lab 11 — Configuration, provider selection, API keys.
 Hai tầng model (không trộn):
 
   Blue Team (CP2–CP3, guardrails / pipeline / protected agent)
-    → CỐ ĐỊNH OpenRouter ``liquid/lfm-3-1.7b:free``
+    → Mặc định OpenRouter ``liquid/lfm-3-1.7b:free``
        https://openrouter.ai/liquid/lfm-3-1.7b:free
     → Cần ``OPENROUTER_API_KEY``
+    → Lựa chọn do học viên yêu cầu: BLUE_PROVIDER=liquid, LIQUID_API_KEY,
+      endpoint chính thức Liquid /openai/v1, model cố định lfm3-1.7b.
+      Artifact ghi đúng provider; không tự thay thế yêu cầu provider của rubric.
 
   Red Team (CP4)
     → Chọn một provider: OpenAI hoặc Gemini
@@ -33,6 +36,9 @@ except ImportError:
 PROVIDER_OPENAI = "openai"
 PROVIDER_GEMINI = "gemini"
 PROVIDER_OPENROUTER = "openrouter"
+PROVIDER_LIQUID = "liquid"
+LIQUID_BASE_URL = "https://api.liquid.ai/openai/v1"
+LIQUID_MODEL = "lfm3-1.7b"
 
 # --- Blue Team (LOCKED) ---
 BLUE_PROVIDER = PROVIDER_OPENROUTER
@@ -100,12 +106,21 @@ except FileNotFoundError:
 # ---------------------------------------------------------------------------
 
 def get_blue_provider() -> str:
-    return BLUE_PROVIDER
+    """Default lab route, or the user's explicit direct-Liquid alternative."""
+    provider = os.environ.get("BLUE_PROVIDER", BLUE_PROVIDER).strip().lower()
+    if provider not in {PROVIDER_OPENROUTER, PROVIDER_LIQUID}:
+        raise ValueError("BLUE_PROVIDER must be openrouter or liquid")
+    return provider
 
 
 def get_blue_model() -> str:
-    # Hard-locked; env cannot override for the graded Blue Team path.
-    return BLUE_MODEL
+    # Both routes select LFM3-1.7B. No arbitrary model override is accepted.
+    return LIQUID_MODEL if get_blue_provider() == PROVIDER_LIQUID else BLUE_MODEL
+
+
+def get_blue_api_key() -> str:
+    name = "LIQUID_API_KEY" if get_blue_provider() == PROVIDER_LIQUID else "OPENROUTER_API_KEY"
+    return os.environ.get(name, "").strip()
 
 
 def get_openrouter_api_key() -> str:
@@ -113,7 +128,9 @@ def get_openrouter_api_key() -> str:
 
 
 def blue_client_kwargs() -> dict:
-    """OpenAI SDK kwargs pointing at OpenRouter (Blue Team only)."""
+    """Keep each provider's key paired with its own endpoint."""
+    if get_blue_provider() == PROVIDER_LIQUID:
+        return {"api_key": get_blue_api_key() or None, "base_url": LIQUID_BASE_URL}
     return {
         "api_key": get_openrouter_api_key() or None,
         "base_url": (
@@ -236,10 +253,9 @@ def is_harder_model() -> bool:
 
 def setup_api_key():
     """Ensure keys for Blue (OpenRouter) + Red / Red Advance (OpenAI or Gemini)."""
-    if not get_openrouter_api_key():
-        os.environ["OPENROUTER_API_KEY"] = input(
-            "Enter OpenRouter API Key (Blue): "
-        ).strip()
+    if not get_blue_api_key():
+        name = "LIQUID_API_KEY" if get_blue_provider() == PROVIDER_LIQUID else "OPENROUTER_API_KEY"
+        os.environ[name] = input(f"Enter {get_blue_provider()} API Key (Blue): ").strip()
     print(f"Blue  — {blue_provider_label()}  [LOCKED]")
 
     red = get_red_provider()

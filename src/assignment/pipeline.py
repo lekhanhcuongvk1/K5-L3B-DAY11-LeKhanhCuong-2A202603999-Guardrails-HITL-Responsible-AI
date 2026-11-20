@@ -74,10 +74,10 @@ async def run_assignment_suite(pipeline) -> dict:
     Errors are audited and re-raised, never counted as successful defenses.
     """
     from agents.agent import create_blue_agent
-    from core.config import get_openrouter_api_key, get_blue_model, get_blue_provider
+    from core.config import get_blue_api_key, get_blue_model, get_blue_provider, blue_client_kwargs
 
-    if not get_openrouter_api_key():
-        raise RuntimeError('CP3 requires OPENROUTER_API_KEY in local .env')
+    if not get_blue_api_key():
+        raise RuntimeError('CP3 requires a key for the selected Blue provider in local .env')
     root = Path(__file__).resolve().parents[2]
     out = root / 'outputs'
     plugins = pipeline['plugins']
@@ -87,6 +87,9 @@ async def run_assignment_suite(pipeline) -> dict:
     result = {'framework': 'openai-sdk-with-adk-plugins',
               'llm_provider': get_blue_provider(), 'llm_model': get_blue_model(),
               'run_id': uuid4().hex, 'execution': 'live'}
+    result['llm_base_url'] = blue_client_kwargs()['base_url']
+    result['model_family'] = 'LFM3-1.7B'
+    result['provider_override'] = get_blue_provider() != 'openrouter'
 
     def finish(user_id, request_id, text, blocked, layer):
         audit.record_output(user_id=user_id, request_id=request_id, text=text,

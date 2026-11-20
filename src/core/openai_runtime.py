@@ -51,7 +51,7 @@ class OpenAIRunner:
         from openai import OpenAI
 
         options = dict(self.client_kwargs or {})
-        if self.provider == "openrouter":
+        if self.provider in {"openrouter", "liquid"}:
             # Bound lab waits and avoid silently consuming free daily quota on retries.
             options.update(timeout=60.0, max_retries=0)
         return OpenAI(**options)
@@ -76,12 +76,12 @@ class OpenAIRunner:
                         {"role": "user", "content": user_message},
                     ],
                     temperature=self.temperature,
-                    **({"max_tokens": 1024} if self.provider == "openrouter" else {}),
+                    **({"max_tokens": 1024} if self.provider in {"openrouter", "liquid"} else {}),
                 )
                 break
             except Exception as exc:
                 status = getattr(exc, "status_code", None)
-                if self.provider != "openrouter" or status not in (429, 502, 503, 504) or attempt == 2:
+                if self.provider not in {"openrouter", "liquid"} or status not in (429, 502, 503, 504) or attempt == 2:
                     raise
                 wait = 5 * (2 ** attempt)
                 print(f"Blue provider HTTP {status}; retry {attempt + 1}/2 in {wait}s.", flush=True)
@@ -207,7 +207,7 @@ def create_blue_pair(
     output_hooks: list | None = None,
     temperature: float = 0.4,
 ) -> tuple[OpenAIAgent, OpenAIRunner]:
-    """Blue Team — always OpenRouter liquid/lfm-3-1.7b:free."""
+    """Blue LFM3-1.7B; OpenRouter default, direct Liquid explicitly selectable."""
     return _make_pair(
         name=name,
         instruction=instruction,

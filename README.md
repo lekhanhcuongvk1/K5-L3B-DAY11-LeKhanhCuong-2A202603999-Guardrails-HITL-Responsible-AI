@@ -32,14 +32,38 @@ Artifact CP3: `outputs/results.json`, `outputs/audit_log.json`,
 `outputs/metrics.json`. Test dùng model giả chỉ ghi vào thư mục tạm của pytest;
 artifact nộp phải được sinh riêng bằng lệnh chạy Blue thật ở trên.
 
-Trạng thái xác minh CP3: **111 tests passed, 4 skipped**. Bốn test artifact
-đang skip vì chưa có `outputs/results.json`. Ba lần chạy thật đã bị gián đoạn
-bởi HTTP 429/504 từ provider Liquid trên OpenRouter; lần đầu trả lời thành công
-4/5 câu safe trước khi lỗi. Chưa xác nhận hoàn tất CP3 và chưa có artifact
-phòng thủ thành công để nộp. `audit_log.json` / `metrics.json` hiện có chỉ ghi
-nhận lần chạy lỗi gần nhất; không dùng chúng làm bằng chứng suite đã đạt.
-Khi provider phục hồi, chạy lại `--part 3` rồi chạy toàn bộ tests; chỉ commit
-ba artifact CP3 sau khi lệnh suite thành công và bốn test artifact hết skip.
+Trạng thái xác minh CP3: **118 tests passed, không còn skipped**. Suite đã chạy
+thành công qua Liquid AI trực tiếp: 5/5 safe đi qua, 8/8 attack và 3/3 edge bị
+chặn, flood nhận 10/chặn 5 trên tổng 15, 6/6 quyết định egress đúng kỳ vọng.
+Audit có 31 tương tác, metrics ghi nhận 0 lỗi provider. Kết quả này là bằng
+chứng chạy thật của provider Liquid, không phải kết quả OpenRouter.
+
+### Đường gọi Liquid trực tiếp (lựa chọn được học viên yêu cầu)
+
+OpenRouter là mặc định của starter. Sau các lần HTTP 429/504 trên đường đó,
+học viên yêu cầu dùng Liquid trực tiếp để tiếp tục bài thực hành với cùng họ
+model LFM3-1.7B. Endpoint và model ID đã đối chiếu tài liệu chính thức:
+[Liquid API quickstart](https://docs.liquid.ai/api/quickstart),
+[Liquid API models](https://docs.liquid.ai/api/models).
+
+Chỉ cấu hình trong `.env` local:
+
+```dotenv
+BLUE_PROVIDER=liquid
+LIQUID_API_KEY=your_local_liquid_key
+```
+
+Code ghép key Liquid với `https://api.liquid.ai/openai/v1` và model `lfm3-1.7b`;
+không đổi model qua biến môi trường tùy ý, không dùng key Liquid tại OpenRouter.
+Artifact ghi `llm_provider=liquid`, `llm_model=lfm3-1.7b`, `llm_base_url`,
+`model_family=LFM3-1.7B`, `provider_override=true`. Các lớp bảo vệ giữ nguyên.
+Blue được bổ sung chỉ dẫn không bịa thông tin sản phẩm, không nhận có quyền
+kiểm tra tài khoản/giao dịch và tóm tắt được nội dung email đã dán sẵn.
+
+Đây là thay đổi provider so với yêu cầu OpenRouter trong starter; kết quả không
+tự bảo đảm được chấp nhận theo điều kiện provider của rubric. Muốn tái lập đúng
+đường mặc định, đặt `BLUE_PROVIDER=openrouter`, giữ `OPENROUTER_API_KEY` và chạy
+lại suite để tạo artifact tương ứng. Không sửa nhãn provider trong JSON bằng tay.
 
 ## Checkpoint 2 — Guardrails đã triển khai
 
