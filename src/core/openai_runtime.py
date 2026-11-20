@@ -8,6 +8,7 @@ Gemini Red Team dùng Google ADK trong agents/*.py — không đi qua file này.
 """
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -49,27 +50,42 @@ class OpenAIRunner:
     def _client(self):
         from openai import OpenAI
 
-        return OpenAI(**(self.client_kwargs or {}))
+        options = dict(self.client_kwargs or {})
+        if self.provider == "openrouter":
+            # Bound lab waits and avoid silently consuming free daily quota on retries.
+            options.update(timeout=60.0, max_retries=0)
+        return OpenAI(**options)
 
-    async def chat(self, agent: OpenAIAgent, user_message: str) -> str:
+    async def chat(self, agent: OpenAIAgent, user_message: str, *, user_id: str = "student") -> str:
         for hook in self.input_hooks:
             blocked = hook(user_message)
             if blocked:
                 return blocked
 
-        block_msg = await self._run_input_plugins(user_message)
+        block_msg = await self._run_input_plugins(user_message, user_id=user_id)
         if block_msg is not None:
             return block_msg
 
         client = self._client()
-        completion = client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": agent.instruction},
-                {"role": "user", "content": user_message},
-            ],
-            temperature=self.temperature,
-        )
+        for attempt in range(3):
+            try:
+                completion = client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": agent.instruction},
+                        {"role": "user", "content": user_message},
+                    ],
+                    temperature=self.temperature,
+                    **({"max_tokens": 1024} if self.provider == "openrouter" else {}),
+                )
+                break
+            except Exception as exc:
+                status = getattr(exc, "status_code", None)
+                if self.provider != "openrouter" or status not in (429, 502, 503, 504) or attempt == 2:
+                    raise
+                wait = 5 * (2 ** attempt)
+                print(f"Blue provider HTTP {status}; retry {attempt + 1}/2 in {wait}s.", flush=True)
+                await asyncio.sleep(wait)
         text = (completion.choices[0].message.content or "").strip()
 
         for hook in self.output_hooks:
@@ -78,7 +94,7 @@ class OpenAIRunner:
         text = await self._run_output_plugins(text)
         return text
 
-    async def _run_input_plugins(self, user_message: str) -> str | None:
+    async def _run_input_plugins(self, user_message: str, *, user_id: str = "student") -> str | None:
         if not self.plugins:
             return None
         try:
@@ -90,7 +106,7 @@ class OpenAIRunner:
             role="user",
             parts=[types.Part.from_text(text=user_message)],
         )
-        ctx = _MockInvocationContext()
+        ctx = _MockInvocationContext(user_id=user_id)
         for plugin in self.plugins:
             cb = getattr(plugin, "on_user_message_callback", None)
             if cb is None:

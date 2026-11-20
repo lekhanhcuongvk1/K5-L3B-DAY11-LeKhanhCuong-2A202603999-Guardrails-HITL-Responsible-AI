@@ -1,5 +1,46 @@
 # Day 11 — Controlled Agent Security (2026)
 
+## Checkpoint 3 — Pipeline Blue
+
+`RateLimitPlugin → InputGuardrailPlugin → LLM → OutputGuardrailPlugin`.
+Audit và monitoring quan sát toàn bộ request, kể cả request bị chặn trước model.
+Blue giữ nguyên model mà lab yêu cầu.
+
+- Sliding window theo `user_id`, dùng đồng hồ monotonic. Request bị từ chối
+  không kéo dài cửa sổ; các nhóm safe/attack/edge dùng user khác nhau.
+- Audit có request ID, input/output đã che dữ liệu nhạy cảm, timestamp UTC,
+  lớp quyết định và latency. Metrics phản ánh request, block, rate-limit và lỗi
+  provider; cảnh báo là trạng thái hiện tại, không nhân đôi khi kiểm tra lại.
+- Egress chỉ nhận HTTPS, hostname khớp chính xác allowlist tham chiếu, không có
+  userinfo hoặc port lạ; payload chứa secret/PII bị từ chối. Suite chỉ kiểm tra
+  đề xuất, không gửi tiền / gọi endpoint VinBank giả định.
+- 5 câu banking gọi Blue thật; 8 attack và 3 edge chạy qua cùng runtime/plugin.
+  Bộ flood gọi riêng callback rate limiter 15 lần: `passed` là số lượt qua
+  cổng rate limit, không phải số lần model trả lời. Không cần tốn API cho flood.
+- `results.json` có provider/model, run ID và request ID. Chỉ xuất sau khi schema
+  và các điều kiện hành vi đều đạt; lỗi API được audit rồi báo lỗi, không tính
+  là phòng thủ thành công. Blue retry tối đa 2 lần cho HTTP 429/502/503/504, chờ 5/10 giây;
+  mỗi lần gọi HTTP có timeout 60 giây và giới hạn 1.024 output tokens.
+- CP3 chỉ cần key OpenRouter; không hỏi key Red. Chạy lại sẽ ghi đè artifact CP3.
+
+```powershell
+.\.venv\Scripts\python.exe src/main.py --part 3
+.\.venv\Scripts\python.exe -m pytest tests/unit tests/smoke tests/public -q
+```
+
+Artifact CP3: `outputs/results.json`, `outputs/audit_log.json`,
+`outputs/metrics.json`. Test dùng model giả chỉ ghi vào thư mục tạm của pytest;
+artifact nộp phải được sinh riêng bằng lệnh chạy Blue thật ở trên.
+
+Trạng thái xác minh CP3: **111 tests passed, 4 skipped**. Bốn test artifact
+đang skip vì chưa có `outputs/results.json`. Ba lần chạy thật đã bị gián đoạn
+bởi HTTP 429/504 từ provider Liquid trên OpenRouter; lần đầu trả lời thành công
+4/5 câu safe trước khi lỗi. Chưa xác nhận hoàn tất CP3 và chưa có artifact
+phòng thủ thành công để nộp. `audit_log.json` / `metrics.json` hiện có chỉ ghi
+nhận lần chạy lỗi gần nhất; không dùng chúng làm bằng chứng suite đã đạt.
+Khi provider phục hồi, chạy lại `--part 3` rồi chạy toàn bộ tests; chỉ commit
+ba artifact CP3 sau khi lệnh suite thành công và bốn test artifact hết skip.
+
 ## Checkpoint 2 — Guardrails đã triển khai
 
 - Input chuẩn hóa Unicode NFKC, ký tự ẩn, khoảng trắng và dấu tiếng Việt trước

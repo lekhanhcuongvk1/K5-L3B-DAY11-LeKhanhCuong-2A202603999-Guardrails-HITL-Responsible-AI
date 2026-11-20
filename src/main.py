@@ -138,7 +138,7 @@ async def main(parts=None):
         parts = [2, 3, 4]  # Core: CP2 → CP3 → CP4
 
     # CP2 runs deterministic local checks and needs no provider credentials.
-    if any(part in (3, 4) for part in parts):
+    if 4 in parts:
         setup_api_key()
 
     for part in parts:
@@ -157,6 +157,10 @@ async def main(parts=None):
 
 
 if __name__ == "__main__":
+    # Windows redirected terminals may default to cp1252; lab messages use UTF-8.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(
         description=(
             "Lab 11: Guardrails / HITL / Red Team — "
