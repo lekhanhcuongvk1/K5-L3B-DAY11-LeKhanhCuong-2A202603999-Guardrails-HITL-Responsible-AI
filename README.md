@@ -1,5 +1,59 @@
 # Day 11 — Controlled Agent Security (2026)
 
+## Th?ng tin b?i n?p ? Kh?a 5, L3B
+
+- **H?c vi?n:** L? Kh?nh C??ng
+- **MSSV:** `2A202603999`
+- **Nh?nh tri?n khai:** `cuonglk`
+- **Repo:** `K5-L3B-DAY11-LeKhanhCuong-2A202603999-Guardrails-HITL-Responsible-AI`
+
+### Ch?y tr?n Windows (PowerShell)
+
+Ch?y c?c l?nh t? th? m?c g?c repo. D?ng tr?c ti?p Python c?a virtualenv ?? tr?nh
+nh?m interpreter v? kh?ng c?n thay ??i execution policy:
+
+```powershell
+# Ch? t?o m?i tr??ng n?u ch?a c? .venv
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+# Ch? sao ch?p khi ch?a c? .env; gi? nguy?n key local ?ang d?ng
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+.\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe -m pytest tests/smoke -q
+```
+
+Sau khi ho?n thi?n implementation c?a t?ng checkpoint:
+
+```powershell
+.\.venv\Scripts\python.exe src/main.py --part 2
+.\.venv\Scripts\python.exe src/main.py --part 3
+.\.venv\Scripts\python.exe src/main.py --part 4
+.\.venv\Scripts\python.exe -m pytest tests/public -q
+.\.venv\Scripts\python.exe scripts/grade.py --submission-dir . --out outputs/grade_report.json
+```
+
+`pytest` kh?ng c? ???ng d?n ch? ch?y smoke theo `pytest.ini`. Ph?i ch?y public
+tests ri?ng sau khi ho?n thi?n code v? t?o artifact. Kh?ng t? t?o k?t qu? JSON
+ho?c vi?t b?o c?o thay cho l?nh lab / grader.
+
+### Tr?ng th?i Checkpoint 1
+
+- Python 3.11; dependencies ?? c?i trong `.venv`, `pip check` kh?ng b?o xung ??t.
+- Ki?m tra m?i tr??ng: **39 smoke tests passed** (kh?ng g?i API th?t).
+- NeMo Guardrails `0.24.1` ?? c?i ??ng kho?ng phi?n b?n trong requirements.
+- `.env` v? `.venv` ???c Git b? qua; `.env` kh?ng ???c Git theo d?i.
+- Blue ?? c? key OpenRouter local; model gi? nguy?n `liquid/lfm-3-1.7b:free`.
+- **?i?u ki?n c?n thi?u cho CP4 ??ng rubric:** c?u h?nh key OpenAI ho?c Gemini
+  c? quy?n g?i model m?c ??nh v? c?n quota. Key Nghimmo/Claude hi?n c? ch? l?
+  c?u h?nh th? nghi?m; starter ch?a t?ch h?p provider n?y. Kh?ng ghi k?t qu?
+  Claude th?nh k?t qu? OpenAI. Khi ??i provider ph?i ch?y l?i ?? t?o artifact
+  t??ng ?ng, ho?c c? x?c nh?n ch?p nh?n model thay th? t? Key Coach.
+
+C?c d?ng tr?ng th?i tr?n ghi nh?n b??c setup; kh?ng c? ngh?a c?c TODO CP2?CP4
+?? ???c tri?n khai. Kh?ng commit key th?t ho?c to?n b? `.env`.
+
+---
+
 > 👤 **Hình thức:** bài tập **cá nhân** (1 người / 1 MSSV).  
 > 🎯 **Mục tiêu:** đóng vai **Blue Team** để học cách xây Guardrails phòng thủ, rồi đóng vai **Red Team** để tấn công agent **Red** hoặc **Red Advance**.  
 > ✅ Làm theo **Checkpoint 1 → 5** trong [`CHECKPOINTS.md`](CHECKPOINTS.md) · nộp theo [`SUBMISSION.md`](SUBMISSION.md).
