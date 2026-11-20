@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, cuonglk]
   pull_request:
 
 jobs:
@@ -17,5 +17,9 @@ jobs:
         run: |
           python -m pip install -U pip
           pip install -r requirements.txt
-      - name: Smoke tests (no API key)
-        run: pytest tests/smoke -q
+      - name: Validate dependencies
+        run: python -m pip check
+      - name: All offline tests and artifact contracts (no API key)
+        env:
+          PYTHON_DOTENV_DISABLED: "1"
+        run: python -m pytest tests/unit tests/smoke tests/public -q
