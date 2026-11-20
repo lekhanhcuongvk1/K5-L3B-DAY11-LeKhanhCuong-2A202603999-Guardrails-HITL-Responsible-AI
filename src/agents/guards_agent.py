@@ -377,6 +377,15 @@ def create_red_agent_advance():
     advance_model = get_red_model()
     # Bắt buộc NeMo: thiếu thư viện / thiếu key → báo lỗi ngay, không tự lùi về regex.
     nemo_guard = NemoRailsGuard()
+    from core.config import get_red_provider
+    if get_red_provider() == "nghimmo":
+        from core.anthropic_runtime import create_claude_pair
+        # 'openai' here denotes the runner's callback contract, not the wire API.
+        return create_claude_pair(
+            name="red_agent_advance", instruction=RED_ADVANCE_INSTRUCTION,
+            app_name="red_agent_advance",
+            plugins=[RedAdvanceGuardPlugin(nemo_guard, runtime="openai")],
+        )
     label = (
         f"Red Advance created — STRONG guardrails (regex + {nemo_layer_label()}) "
         f"[Red:{red_provider_label('advance')}]"

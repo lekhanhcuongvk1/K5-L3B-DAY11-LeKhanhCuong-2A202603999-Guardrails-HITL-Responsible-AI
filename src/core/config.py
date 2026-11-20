@@ -37,6 +37,7 @@ PROVIDER_OPENAI = "openai"
 PROVIDER_GEMINI = "gemini"
 PROVIDER_OPENROUTER = "openrouter"
 PROVIDER_LIQUID = "liquid"
+PROVIDER_NGHIMMO = "nghimmo"
 LIQUID_BASE_URL = "https://api.liquid.ai/openai/v1"
 LIQUID_MODEL = "lfm3-1.7b"
 
@@ -156,11 +157,15 @@ def get_red_provider() -> str:
     ).strip().lower()
     if raw in {"gemini", "google", "adk"}:
         return PROVIDER_GEMINI
-    return PROVIDER_OPENAI
+    if raw in {PROVIDER_OPENAI, PROVIDER_NGHIMMO}:
+        return raw
+    raise ValueError("RED_TEAM_PROVIDER must be openai, gemini or nghimmo")
 
 
 def get_red_model() -> str:
     """Model Red Team từ .env (cùng cho default + advance)."""
+    if get_red_provider() == PROVIDER_NGHIMMO:
+        return os.environ.get("NGHIMMO_MODEL", "nghi/claude-sonnet-5.5").strip()
     if get_red_provider() == PROVIDER_GEMINI:
         return (
             os.environ.get("GEMINI_MODEL", DEFAULT_GEMINI_MODEL).strip()
@@ -260,7 +265,11 @@ def setup_api_key():
 
     red = get_red_provider()
     model = get_red_model()
-    if red == PROVIDER_GEMINI:
+    if red == PROVIDER_NGHIMMO:
+        if not os.environ.get("NGHIMMO_API_KEY", "").strip():
+            raise RuntimeError("Set NGHIMMO_API_KEY in local .env before CP4")
+        print(f"Red / Red Advance — nghimmo:{model} [alternative provider]")
+    elif red == PROVIDER_GEMINI:
         if not os.environ.get("GOOGLE_API_KEY", "").strip():
             os.environ["GOOGLE_API_KEY"] = input("Enter Google API Key (Red): ").strip()
         os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "0"

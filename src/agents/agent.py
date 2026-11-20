@@ -69,6 +69,11 @@ PROTECTED_INSTRUCTION = BLUE_INSTRUCTION
 def create_red_agent_default():
     """Red — NO guardrails. Model mềm cố định (4o-mini / 3.5-flash)."""
     soft = get_red_model_default()
+    from core.config import get_red_provider
+    if get_red_provider() == "nghimmo":
+        from core.anthropic_runtime import create_claude_pair
+        return create_claude_pair(name="red_agent_default", instruction=RED_DEFAULT_INSTRUCTION,
+                                  app_name="red_agent_default", temperature=0.7)
     if red_uses_openai_sdk():
         from core.openai_runtime import create_openai_pair
 
