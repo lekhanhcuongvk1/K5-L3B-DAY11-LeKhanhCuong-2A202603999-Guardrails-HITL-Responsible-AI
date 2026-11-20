@@ -1,5 +1,36 @@
 # Day 11 — Controlled Agent Security (2026)
 
+## Checkpoint 2 — Guardrails đã triển khai
+
+- Input chuẩn hóa Unicode NFKC, ký tự ẩn, khoảng trắng và dấu tiếng Việt trước
+  khi kiểm tra injection / topic. Nội dung email/RAG được kiểm tra như dữ liệu;
+  email banking lành tính vẫn được cho qua.
+- Topic dùng danh sách trong `core/config.py`, ưu tiên topic cấm và đối chiếu
+  ranh giới từ để tránh chặn nhầm `skills` vì từ `kill` hoặc cho qua `discredit`
+  vì từ `credit`. Input rỗng / chỉ khoảng trắng bị chặn.
+- Output che SĐT, email, CMND/CCCD, API key, password và secret demo / DB host,
+  kể cả ký tự full-width, ký tự ẩn hoặc secret bị chèn khoảng trắng. Các vùng
+  match chồng nhau được gộp; nội dung không nhạy cảm giữ nguyên định dạng.
+- Plugin input dừng request trước model; plugin output thay nội dung đã che
+  trước khi trả lời. Counters phản ánh số request và số lần chặn / redact.
+- `--part 2` chạy offline, không hỏi key và không tạo artifact nộp bài. Bộ
+  kiểm thử dùng model giả để xác nhận wiring, không giả kết quả API thật.
+
+Kiểm tra CP2 từ gốc repo:
+
+```powershell
+.\.venv\Scripts\python.exe src/main.py --part 2
+.\.venv\Scripts\python.exe -m pytest tests/unit/test_cp2_guardrails.py tests/smoke tests/public/test_lab_contracts.py -q -k "not egress"
+```
+
+Kết quả: **82 passed, 1 deselected**. Test egress thuộc CP3 nên chưa chạy ở
+bước này. Tests bổ sung bao phủ dataset PII, Unicode / tiếng Việt, câu lành tính,
+plugin counters và luồng chặn / che dữ liệu qua runtime Blue.
+
+Giới hạn: regex là lớp phòng vệ đầu tiên, không bảo đảm bắt mọi cách diễn đạt,
+mã hóa hay suy luận secret. CP3 vẫn phải kiểm soát egress; LLM-as-Judge là phần
+tùy chọn và chưa được bật. CP2 không đánh giá hallucination hay API quota.
+
 ## Th?ng tin b?i n?p ? Kh?a 5, L3B
 
 - **H?c vi?n:** L? Kh?nh C??ng
