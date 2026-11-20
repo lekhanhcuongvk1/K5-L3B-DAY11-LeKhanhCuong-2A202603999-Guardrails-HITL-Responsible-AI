@@ -263,6 +263,10 @@ def build_rails_dict(
         ],
     }
     if include_model:
+        if (provider or get_red_provider()) == "nghimmo":
+            # Inject NghimmoNemoModel into LLMRails; never use the forbidden
+            # OpenAI endpoint for the service's Claude key.
+            return config
         config["models"] = [
             _model_entry(provider or get_red_provider(), model or get_red_model())
         ]
@@ -327,6 +331,9 @@ class NemoRailsGuard:
         nemoguardrails = require_nemo()
         from nemoguardrails import LLMRails
 
+        if config is None and llm is None and get_red_provider() == "nghimmo":
+            from core.anthropic_runtime import NghimmoNemoModel
+            llm = NghimmoNemoModel()
         if config is None:
             config = build_rails_config(include_model=llm is None)
         self.version = getattr(nemoguardrails, "__version__", "?")
